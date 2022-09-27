@@ -31,14 +31,14 @@ namespace TodoListClient.Controllers
         // GET: TodoList/Create
         public ActionResult Create()
         {
-            Todo todo = new Todo() { Owner = HttpContext.User.Identity.Name };
+            TodoItem todo = new TodoItem() { Owner = HttpContext.User.Identity.Name };
             return View(todo);
         }
 
         // POST: TodoList/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create([Bind("Title,Owner")] Todo todo)
+        public async Task<ActionResult> Create([Bind("Title,Owner")] TodoItem todo)
         {
             await _todoListService.AddAsync(todo);
             return RedirectToAction("Index");
@@ -47,7 +47,7 @@ namespace TodoListClient.Controllers
         // GET: TodoList/Edit/5
         public async Task<ActionResult> Edit(int id)
         {
-            Todo todo = await this._todoListService.GetAsync(id);
+            TodoItem todo = await this._todoListService.GetAsync(id);
 
             if (todo == null)
             {
@@ -60,7 +60,7 @@ namespace TodoListClient.Controllers
         // POST: TodoList/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Edit(int id, [Bind("Id,Title,Owner")] Todo todo)
+        public async Task<ActionResult> Edit(int id, [Bind("Id,Title,Owner")] TodoItem todo)
         {
             await _todoListService.EditAsync(todo);
             return RedirectToAction("Index");
@@ -69,7 +69,7 @@ namespace TodoListClient.Controllers
         // GET: TodoList/Delete/5
         public async Task<ActionResult> DeleteItem(int id)
         {
-            Todo todo = await this._todoListService.GetAsync(id);
+            TodoItem todo = await this._todoListService.GetAsync(id);
 
             if (todo == null)
             {
@@ -82,7 +82,7 @@ namespace TodoListClient.Controllers
         // POST: TodoList/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> DeleteItem(int id, [Bind("Id,Title,Owner")] Todo todo)
+        public async Task<ActionResult> DeleteItem(int id, [Bind("Id,Title,Owner")] TodoItem todo)
         {
             await _todoListService.DeleteAsync(id);
             return RedirectToAction("Index");

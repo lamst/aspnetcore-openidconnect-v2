@@ -14,7 +14,10 @@ using System.Linq;
 using System.Net;
 using System;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
+using Pomelo.EntityFrameworkCore.MySql;
 using TodoListService.Filters;
+using TodoListService.Models;
 using System.Threading.Tasks;
 
 namespace TodoListService
@@ -88,6 +91,10 @@ namespace TodoListService
             // Enable diagnostic logging to help with troubleshooting.  For more details, see https://aka.ms/IdentityModel/PII.
             // You might not want to keep this following flag on for production
             IdentityModelEventSource.ShowPII = true;
+
+            var connectionString = Configuration.GetConnectionString("TodoDatabase");
+            services.AddDbContext<TodoDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            // services.AddDbContext<TodoDbContext>(options => options.UseSqlite(connectionString));
 
             services.AddMvc(options =>
             {

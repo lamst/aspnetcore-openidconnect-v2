@@ -30,14 +30,14 @@ namespace TodoListClient.Services
 {
     public interface ITodoListService
     {
-        Task<IEnumerable<Todo>> GetAsync();
+        Task<IEnumerable<TodoItem>> GetAsync();
 
-        Task<Todo> GetAsync(int id);
+        Task<TodoItem> GetAsync(int id);
 
         Task DeleteAsync(int id);
 
-        Task<Todo> AddAsync(Todo todo);
+        Task<TodoItem> AddAsync(TodoItem todo);
 
-        Task<Todo> EditAsync(Todo todo);
+        Task<TodoItem> EditAsync(TodoItem todo);
     }
 }

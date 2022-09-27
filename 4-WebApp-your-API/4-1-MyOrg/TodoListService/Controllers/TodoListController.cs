@@ -22,10 +22,13 @@ namespace TodoListService.Controllers
     public class TodoListController : Controller
     {
         // In-memory TodoList
-        private static readonly Dictionary<int, Todo> TodoStore = new Dictionary<int, Todo>();
+        private static readonly Dictionary<int, TodoItem> TodoStore = new Dictionary<int, TodoItem>();
 
         // This is needed to get access to the internal HttpContext.User, if available.
         private readonly IHttpContextAccessor _contextAccessor;
+
+        // This is needed to get access to the DB context
+        private readonly TodoDbContext _dbContext;
 
         private const string _todoListReadScope = "ToDoList.Read";
         private const string _todoListReadWriteScope = "ToDoList.ReadWrite";
@@ -41,9 +44,11 @@ namespace TodoListService.Controllers
         /// The API controller that manages an instance of ToDo list
         /// </summary>
         /// <param name="contextAccessor"></param>
-        public TodoListController(IHttpContextAccessor contextAccessor)
+        /// <param name="dbContext">The context to the database</param>
+        public TodoListController(IHttpContextAccessor contextAccessor, TodoDbContext dbContext)
         {
             _contextAccessor = contextAccessor;
+            _dbContext = dbContext;
 
             // We seek the details of the user represented by the access token presented to this API, can be empty
             /**
@@ -67,10 +72,10 @@ namespace TodoListService.Controllers
                 // Pre-populate with sample data
                 if (TodoStore.Count == 0 && !string.IsNullOrEmpty(_currentLoggedUser))
                 {
-                    TodoStore.Add(1, new Todo() { Id = 1, Owner = $"{_currentLoggedUser}", Title = "Pick up groceries" });
-                    TodoStore.Add(2, new Todo() { Id = 2, Owner = $"{_currentLoggedUser}", Title = "Finish invoice report" });
-                    TodoStore.Add(3, new Todo() { Id = 3, Owner = "Fake id of another User", Title = "Rent a car" });
-                    TodoStore.Add(4, new Todo() { Id = 4, Owner = "made up id of another ", Title = "Get vaccinated" });
+                    TodoStore.Add(1, new TodoItem() { Id = 1, Owner = $"{_currentLoggedUser}", Title = "Pick up groceries" });
+                    TodoStore.Add(2, new TodoItem() { Id = 2, Owner = $"{_currentLoggedUser}", Title = "Finish invoice report" });
+                    TodoStore.Add(3, new TodoItem() { Id = 3, Owner = "Fake id of another User", Title = "Rent a car" });
+                    TodoStore.Add(4, new TodoItem() { Id = 4, Owner = "made up id of another ", Title = "Get vaccinated" });
                 }
             }
         }
@@ -97,12 +102,13 @@ namespace TodoListService.Controllers
             AcceptedScope = new string[] { _todoListReadScope, _todoListReadWriteScope },
             AcceptedAppPermission = new string[] { _todoListReadAllPermission, _todoListReadWriteAllPermission }
             )]
-        public IEnumerable<Todo> Get()
+        public IEnumerable<TodoItem> Get()
         {
             if (!IsAppOnlyToken())
             {
                 // this is a request for all ToDo list items of a certain user.
-                return TodoStore.Values.Where(x => x.Owner == _currentLoggedUser);
+                return _dbContext.TodoItems.Where(x => x.Owner == _currentLoggedUser);
+                // return TodoStore.Values.Where(x => x.Owner == _currentLoggedUser);
             }
             else
             {
@@ -116,7 +122,7 @@ namespace TodoListService.Controllers
         [RequiredScopeOrAppPermission(
             AcceptedScope = new string[] { _todoListReadScope, _todoListReadWriteScope },
             AcceptedAppPermission = new string[] { _todoListReadAllPermission, _todoListReadWriteAllPermission })]
-        public Todo Get(int id)
+        public TodoItem Get(int id)
         {
             //if it only has delegated permissions
             //then it will be t.id==id && x.Owner == owner
@@ -124,11 +130,13 @@ namespace TodoListService.Controllers
 
             if (!IsAppOnlyToken())
             {
-                return TodoStore.Values.FirstOrDefault(t => t.Id == id && t.Owner == _currentLoggedUser);
+                return _dbContext.TodoItems.FirstOrDefault(t => t.Id == id && t.Owner == _currentLoggedUser);
+                // return TodoStore.Values.FirstOrDefault(t => t.Id == id && t.Owner == _currentLoggedUser);
             }
             else
             {
-                return TodoStore.Values.FirstOrDefault(t => t.Id == id);
+                return _dbContext.TodoItems.FirstOrDefault(t => t.Id == id);
+                // return TodoStore.Values.FirstOrDefault(t => t.Id == id);
             }
         }
 
@@ -142,14 +150,17 @@ namespace TodoListService.Controllers
             if (!IsAppOnlyToken())
             {
                 // only delete if the ToDo list item belonged to this user
-                if (TodoStore.Values.Any(x => x.Id == id && x.Owner == _currentLoggedUser))
+                if (_dbContext.TodoItems.Any(x => x.Id == id && x.Owner == _currentLoggedUser))
+                // if (TodoStore.Values.Any(x => x.Id == id && x.Owner == _currentLoggedUser))
                 {
-                    TodoStore.Remove(id);
+                    _dbContext?.Remove(id);
+                    // TodoStore.Remove(id);
                 }
             }
             else
             {
-                TodoStore.Remove(id);
+                _dbContext?.Remove(id);
+                // TodoStore.Remove(id);
             }
         }
 
@@ -158,7 +169,7 @@ namespace TodoListService.Controllers
         [RequiredScopeOrAppPermission(
             AcceptedScope = new string[] { _todoListReadWriteScope },
             AcceptedAppPermission = new string[] { _todoListReadWriteAllPermission })]
-        public IActionResult Post([FromBody] Todo todo)
+        public IActionResult Post([FromBody] TodoItem todo)
         {
             if (IsAppOnlyToken())
             {
@@ -178,10 +189,13 @@ namespace TodoListService.Controllers
                 todo.Owner = _currentLoggedUser;
             }
 
-            int nextid = TodoStore.Values.OrderByDescending(x => x.Id).FirstOrDefault().Id + 1;
-
-            todo.Id = nextid;
-            TodoStore.Add(nextid, todo);
+            // int nextid = TodoStore.Values.OrderByDescending(x => x.Id).FirstOrDefault().Id + 1;
+            // todo.Id = nextid;
+            
+            // TodoStore.Add(nextid, todo);
+            _dbContext.TodoItems.Add(todo);
+            _dbContext.SaveChanges();
+            int nextid = todo.Id;
             return Created($"/todo/{nextid}", todo);
         }
 
@@ -189,9 +203,9 @@ namespace TodoListService.Controllers
         [RequiredScopeOrAppPermission(
             AcceptedScope = new string[] { _todoListReadWriteScope },
             AcceptedAppPermission = new string[] { _todoListReadWriteAllPermission })]
-        public IActionResult Patch(int id, [FromBody] Todo todo)
+        public IActionResult Patch(int id, [FromBody] TodoItem todo)
         {
-            Todo existingToDo = TodoStore.Values.FirstOrDefault(x => x.Id == id);
+            TodoItem existingToDo = TodoStore.Values.FirstOrDefault(x => x.Id == id);
 
             if (id != todo.Id || existingToDo == null)
             {
@@ -210,8 +224,10 @@ namespace TodoListService.Controllers
                 todo.Owner = _currentLoggedUser;
             }
 
-            TodoStore.Remove(id);
-            TodoStore.Add(id, todo);
+            _dbContext.TodoItems.Update(todo);
+            _dbContext.SaveChanges();
+            // TodoStore.Remove(id);
+            // TodoStore.Add(id, todo);
             return Ok(todo);
         }
     }
